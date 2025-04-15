@@ -1,23 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const PENDING_REGISTRATIONS_FILE = path.join(DATA_DIR, 'pending-registrations.json');
+const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
+const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending-registrations.json');
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Initialize files if they don't exist
+if (!fs.existsSync(path.dirname(USERS_FILE))) {
+  fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
 }
-
-// Initialize users file if it doesn't exist
 if (!fs.existsSync(USERS_FILE)) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2));
+  fs.writeFileSync(USERS_FILE, '[]');
 }
-
-// Initialize pending registrations file if it doesn't exist
 if (!fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
-  fs.writeFileSync(PENDING_REGISTRATIONS_FILE, JSON.stringify({}, null, 2));
+  fs.writeFileSync(PENDING_REGISTRATIONS_FILE, '{}');
 }
 
 export interface User {
@@ -27,7 +22,6 @@ export interface User {
   mobile: string;
   city: string;
   registeredAt: string;
-  createdAt: string;
 }
 
 export interface PendingRegistration {
@@ -36,75 +30,71 @@ export interface PendingRegistration {
   mobile: string;
   city: string;
   otp: string;
-  expiresAt: number;
+  expiresAt: string;
 }
 
-export function getUsers(): User[] {
+// File system operations
+export async function getUsers(): Promise<User[]> {
   try {
-    const data = fs.readFileSync(USERS_FILE, 'utf-8');
+    const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Error reading users:', error);
+    console.error('Error reading users file:', error);
     return [];
   }
 }
 
-export function getUsersByIds(userIds: string[]): User[] {
-  const users = getUsers();
-  return users.filter(user => userIds.includes(user.id));
-}
-
-export function saveUser(user: User): void {
+export async function saveUser(user: User): Promise<void> {
   try {
-    const users = getUsers();
+    const users = await getUsers();
     users.push(user);
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+    await fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
   } catch (error) {
     console.error('Error saving user:', error);
     throw error;
   }
 }
 
-export function clearAllUsers(): void {
+export async function getPendingRegistration(email: string): Promise<PendingRegistration | null> {
   try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify([]));
-  } catch (error) {
-    console.error('Error clearing users:', error);
-    throw new Error('Failed to clear users');
-  }
-}
-
-export function getPendingRegistration(email: string): PendingRegistration | null {
-  try {
-    const data = fs.readFileSync(PENDING_REGISTRATIONS_FILE, 'utf-8');
-    const pendingRegistrations = JSON.parse(data);
-    return pendingRegistrations[email] || null;
+    const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
+    const registrations = JSON.parse(data);
+    return registrations[email] || null;
   } catch (error) {
     console.error('Error reading pending registration:', error);
     return null;
   }
 }
 
-export function savePendingRegistration(email: string, registration: PendingRegistration): void {
+export async function savePendingRegistration(email: string, registration: PendingRegistration): Promise<void> {
   try {
-    const data = fs.readFileSync(PENDING_REGISTRATIONS_FILE, 'utf-8');
-    const pendingRegistrations = JSON.parse(data);
-    pendingRegistrations[email] = registration;
-    fs.writeFileSync(PENDING_REGISTRATIONS_FILE, JSON.stringify(pendingRegistrations, null, 2));
+    const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
+    const registrations = JSON.parse(data);
+    registrations[email] = registration;
+    await fs.promises.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(registrations, null, 2));
   } catch (error) {
     console.error('Error saving pending registration:', error);
     throw error;
   }
 }
 
-export function deletePendingRegistration(email: string): void {
+export async function deletePendingRegistration(email: string): Promise<void> {
   try {
-    const data = fs.readFileSync(PENDING_REGISTRATIONS_FILE, 'utf-8');
-    const pendingRegistrations = JSON.parse(data);
-    delete pendingRegistrations[email];
-    fs.writeFileSync(PENDING_REGISTRATIONS_FILE, JSON.stringify(pendingRegistrations, null, 2));
+    const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
+    const registrations = JSON.parse(data);
+    delete registrations[email];
+    await fs.promises.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(registrations, null, 2));
   } catch (error) {
     console.error('Error deleting pending registration:', error);
+    throw error;
+  }
+}
+
+export async function clearAllUsers(): Promise<void> {
+  try {
+    await fs.promises.writeFile(USERS_FILE, '[]');
+  } catch (error) {
+    console.error('Error clearing users:', error);
     throw error;
   }
 } 
