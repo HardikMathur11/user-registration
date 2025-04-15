@@ -2,34 +2,25 @@ import fs from 'fs';
 import path from 'path';
 import { Redis } from '@upstash/redis';
 
-// In-memory storage for development environment
-let inMemoryUsers: User[] = [];
-const inMemoryPendingRegistrations: Record<string, PendingRegistration> = {};
-
-// Check if we're in a production environment
-const isProduction = process.env.NODE_ENV === 'production';
-
-// Initialize Redis client for production
-const redis = isProduction ? new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-}) : null;
-
 // File paths for development environment
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending_registrations.json');
 
-// Initialize files if they don't exist (development only)
-if (!isProduction) {
-  if (!fs.existsSync(path.dirname(USERS_FILE))) {
-    fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
-  }
-  if (!fs.existsSync(USERS_FILE)) {
-    fs.writeFileSync(USERS_FILE, '[]');
-  }
-  if (!fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
-    fs.writeFileSync(PENDING_REGISTRATIONS_FILE, '{}');
-  }
+// Initialize Redis client
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+});
+
+// Initialize files if they don't exist
+if (!fs.existsSync(path.dirname(USERS_FILE))) {
+  fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
+}
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, '[]');
+}
+if (!fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
+  fs.writeFileSync(PENDING_REGISTRATIONS_FILE, '{}');
 }
 
 export interface User {
@@ -51,18 +42,22 @@ export interface PendingRegistration {
   expiresAt: string;
 }
 
-// File system operations
 export async function getUsers(): Promise<User[]> {
   try {
-    if (isProduction && redis) {
-      // Use Upstash Redis in production
-      const users = await redis.get<User[]>('users') || [];
+    if (process.env.NODE_ENV === 'production') {
+      const users = await redis.get<User[]>('users');
+      if (!users) {
+        // If no users exist, initialize with empty array
+        await redis.set('users', []);
+        return [];
+      }
       return users;
+    } else {
+      const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
+      return JSON.parse(data);
     }
-    const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
-    return JSON.parse(data);
   } catch (error) {
-    console.error('Error reading users file:', error);
+    console.error('Error reading users:', error);
     return [];
   }
 }
@@ -79,16 +74,26 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
 
 export async function saveUser(user: User): Promise<void> {
   try {
-    if (isProduction && redis) {
-      // Use Upstash Redis in production
+    if (process.env.NODE_ENV === 'production') {
       const users = await getUsers();
-      users.push(user);
+      // Check if user already exists
+      const existingUserIndex = users.findIndex(u => u.id === user.id);
+      if (existingUserIndex >= 0) {
+        users[existingUserIndex] = user;
+      } else {
+        users.push(user);
+      }
       await redis.set('users', users);
-      return;
+    } else {
+      const users = await getUsers();
+      const existingUserIndex = users.findIndex(u => u.id === user.id);
+      if (existingUserIndex >= 0) {
+        users[existingUserIndex] = user;
+      } else {
+        users.push(user);
+      }
+      await fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
     }
-    const users = await getUsers();
-    users.push(user);
-    await fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
   } catch (error) {
     console.error('Error saving user:', error);
     throw error;
@@ -97,14 +102,14 @@ export async function saveUser(user: User): Promise<void> {
 
 export async function getPendingRegistration(id: string): Promise<PendingRegistration | null> {
   try {
-    if (isProduction && redis) {
-      // Use Upstash Redis in production
+    if (process.env.NODE_ENV === 'production') {
       const registration = await redis.get<PendingRegistration>(`pending:${id}`);
       return registration;
+    } else {
+      const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
+      const registrations = JSON.parse(data);
+      return registrations[id] || null;
     }
-    const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
-    const registrations = JSON.parse(data);
-    return registrations[id] || null;
   } catch (error) {
     console.error('Error reading pending registration:', error);
     return null;
@@ -113,8 +118,7 @@ export async function getPendingRegistration(id: string): Promise<PendingRegistr
 
 export async function savePendingRegistration(id: string, registration: PendingRegistration): Promise<void> {
   try {
-    if (isProduction && redis) {
-      // Use Upstash Redis in production
+    if (process.env.NODE_ENV === 'production') {
       await redis.set(`pending:${id}`, registration);
     } else {
       const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
@@ -130,8 +134,7 @@ export async function savePendingRegistration(id: string, registration: PendingR
 
 export async function deletePendingRegistration(id: string): Promise<void> {
   try {
-    if (isProduction && redis) {
-      // Use Upstash Redis in production
+    if (process.env.NODE_ENV === 'production') {
       await redis.del(`pending:${id}`);
     } else {
       const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
@@ -147,8 +150,7 @@ export async function deletePendingRegistration(id: string): Promise<void> {
 
 export async function clearAllUsers(): Promise<void> {
   try {
-    if (isProduction && redis) {
-      // Use Upstash Redis in production
+    if (process.env.NODE_ENV === 'production') {
       await redis.set('users', []);
     } else {
       await fs.promises.writeFile(USERS_FILE, '[]');
