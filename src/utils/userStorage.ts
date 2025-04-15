@@ -1,16 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 
-const USERS_FILE_PATH = path.join(process.cwd(), 'data', 'users.json');
+const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 
-// Ensure data directory exists
-if (!fs.existsSync(path.dirname(USERS_FILE_PATH))) {
-  fs.mkdirSync(path.dirname(USERS_FILE_PATH), { recursive: true });
+// Ensure the data directory exists
+if (!fs.existsSync(path.dirname(USERS_FILE))) {
+  fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
 }
 
-// Initialize users file if it doesn't exist
-if (!fs.existsSync(USERS_FILE_PATH)) {
-  fs.writeFileSync(USERS_FILE_PATH, JSON.stringify([]));
+// Initialize with empty array if file doesn't exist
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify([]));
 }
 
 export interface User {
@@ -22,9 +22,27 @@ export interface User {
   registeredAt: string;
 }
 
-export function getUsers(): User[] {
+export async function saveUser(user: Omit<User, 'id' | 'registeredAt'>): Promise<User> {
   try {
-    const data = fs.readFileSync(USERS_FILE_PATH, 'utf-8');
+    const users = await getUsers();
+    const newUser: User = {
+      ...user,
+      id: Date.now().toString(),
+      registeredAt: new Date().toISOString(),
+    };
+    
+    const updatedUsers = [...users, newUser];
+    fs.writeFileSync(USERS_FILE, JSON.stringify(updatedUsers, null, 2));
+    return newUser;
+  } catch (error) {
+    console.error('Error saving user:', error);
+    throw new Error('Failed to save user');
+  }
+}
+
+export async function getUsers(): Promise<User[]> {
+  try {
+    const data = fs.readFileSync(USERS_FILE, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
     console.error('Error reading users:', error);
@@ -32,22 +50,23 @@ export function getUsers(): User[] {
   }
 }
 
-export function saveUser(user: User): void {
+export async function getUsersByIds(userIds: string[]): Promise<User[]> {
   try {
-    const users = getUsers();
-    users.push(user);
-    fs.writeFileSync(USERS_FILE_PATH, JSON.stringify(users, null, 2));
+    const users = await getUsers();
+    return users.filter(user => userIds.includes(user.id));
   } catch (error) {
-    console.error('Error saving user:', error);
+    console.error('Error getting users by IDs:', error);
+    return [];
   }
 }
 
-export function getUserById(id: string): User | undefined {
-  const users = getUsers();
-  return users.find(user => user.id === id);
-}
-
-export function getUsersByIds(ids: string[]): User[] {
-  const users = getUsers();
-  return users.filter(user => ids.includes(user.id));
+// Function to clear all users
+export async function clearAllUsers(): Promise<void> {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify([]));
+    console.log('All users cleared successfully');
+  } catch (error) {
+    console.error('Error clearing users:', error);
+    throw new Error('Failed to clear users');
+  }
 } 
