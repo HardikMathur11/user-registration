@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 // In-memory storage for production environment
-let inMemoryUsers: any[] = [];
-let inMemoryPendingRegistrations: Record<string, any> = {};
+let inMemoryUsers: User[] = [];
+const inMemoryPendingRegistrations: Record<string, PendingRegistration> = {};
 
 // Check if we're in a production environment
 const isProduction = process.env.NODE_ENV === 'production';
