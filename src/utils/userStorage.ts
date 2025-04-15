@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import { kv } from '@vercel/kv';
 
-// In-memory storage for production environment
+// In-memory storage for development environment
 let inMemoryUsers: User[] = [];
 const inMemoryPendingRegistrations: Record<string, PendingRegistration> = {};
 
@@ -47,7 +48,9 @@ export interface PendingRegistration {
 export async function getUsers(): Promise<User[]> {
   try {
     if (isProduction) {
-      return inMemoryUsers;
+      // Use Vercel KV in production
+      const users = await kv.get<User[]>('users') || [];
+      return users;
     }
     const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
     return JSON.parse(data);
@@ -70,7 +73,10 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
 export async function saveUser(user: User): Promise<void> {
   try {
     if (isProduction) {
-      inMemoryUsers.push(user);
+      // Use Vercel KV in production
+      const users = await getUsers();
+      users.push(user);
+      await kv.set('users', users);
       return;
     }
     const users = await getUsers();
@@ -85,7 +91,9 @@ export async function saveUser(user: User): Promise<void> {
 export async function getPendingRegistration(email: string): Promise<PendingRegistration | null> {
   try {
     if (isProduction) {
-      return inMemoryPendingRegistrations[email] || null;
+      // Use Vercel KV in production
+      const registrations = await kv.get<Record<string, PendingRegistration>>('pending-registrations') || {};
+      return registrations[email] || null;
     }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
     const registrations = JSON.parse(data);
@@ -99,7 +107,10 @@ export async function getPendingRegistration(email: string): Promise<PendingRegi
 export async function savePendingRegistration(email: string, registration: PendingRegistration): Promise<void> {
   try {
     if (isProduction) {
-      inMemoryPendingRegistrations[email] = registration;
+      // Use Vercel KV in production
+      const registrations = await kv.get<Record<string, PendingRegistration>>('pending-registrations') || {};
+      registrations[email] = registration;
+      await kv.set('pending-registrations', registrations);
       return;
     }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
@@ -115,7 +126,10 @@ export async function savePendingRegistration(email: string, registration: Pendi
 export async function deletePendingRegistration(email: string): Promise<void> {
   try {
     if (isProduction) {
-      delete inMemoryPendingRegistrations[email];
+      // Use Vercel KV in production
+      const registrations = await kv.get<Record<string, PendingRegistration>>('pending-registrations') || {};
+      delete registrations[email];
+      await kv.set('pending-registrations', registrations);
       return;
     }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
@@ -131,7 +145,8 @@ export async function deletePendingRegistration(email: string): Promise<void> {
 export async function clearAllUsers(): Promise<void> {
   try {
     if (isProduction) {
-      inMemoryUsers = [];
+      // Use Vercel KV in production
+      await kv.set('users', []);
       return;
     }
     await fs.promises.writeFile(USERS_FILE, '[]');
