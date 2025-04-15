@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Toaster, toast } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
 // Main registration page component
