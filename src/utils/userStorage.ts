@@ -20,7 +20,6 @@ export interface User {
   email: string;
   mobile: string;
   city: string;
-  registeredAt: string;
   createdAt: string;
 }
 
