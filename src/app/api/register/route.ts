@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import nodemailer from 'nodemailer';
-import { saveUser, User } from '@/utils/userStorage';
-
-// In-memory storage for pending registrations
-const pendingRegistrations = new Map<string, {
-  name: string;
-  email: string;
-  mobile: string;
-  city: string;
-  otp: string;
-  expiresAt: number;
-}>();
+import { 
+  saveUser, 
+  User, 
+  getPendingRegistration, 
+  savePendingRegistration, 
+  deletePendingRegistration,
+  PendingRegistration
+} from '@/utils/userStorage';
 
 // Function to generate a 6-digit OTP
 function generateOTP(): string {
@@ -76,21 +73,23 @@ export async function POST(request: Request) {
       const generatedOTP = generateOTP();
       const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes from now
 
-      pendingRegistrations.set(email, {
+      const pendingRegistration: PendingRegistration = {
         name,
         email,
         mobile,
         city,
         otp: generatedOTP,
         expiresAt,
-      });
+      };
+
+      savePendingRegistration(email, pendingRegistration);
 
       try {
         await sendOTPEmail(email, generatedOTP);
         return NextResponse.json({ message: 'OTP sent successfully' });
       } catch (error) {
         console.error('Error sending OTP:', error);
-        pendingRegistrations.delete(email);
+        deletePendingRegistration(email);
         return NextResponse.json(
           { error: 'Failed to send OTP. Please try again.' },
           { status: 500 }
@@ -100,7 +99,7 @@ export async function POST(request: Request) {
 
     // If OTP is provided, verify it
     if (otp) {
-      const pendingRegistration = pendingRegistrations.get(email);
+      const pendingRegistration = getPendingRegistration(email);
       
       if (!pendingRegistration) {
         return NextResponse.json(
@@ -117,7 +116,7 @@ export async function POST(request: Request) {
       }
 
       if (Date.now() > pendingRegistration.expiresAt) {
-        pendingRegistrations.delete(email);
+        deletePendingRegistration(email);
         return NextResponse.json(
           { error: 'OTP has expired. Please request a new one.' },
           { status: 400 }
@@ -140,7 +139,7 @@ export async function POST(request: Request) {
       console.log('New user registered:', newUser);
 
       // Remove pending registration
-      pendingRegistrations.delete(email);
+      deletePendingRegistration(email);
 
       // Send welcome email
       try {
