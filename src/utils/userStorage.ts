@@ -17,7 +17,7 @@ const redis = isProduction ? new Redis({
 
 // File paths for development environment
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
-const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending-registrations.json');
+const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending_registrations.json');
 
 // Initialize files if they don't exist (development only)
 if (!isProduction) {
@@ -42,6 +42,7 @@ export interface User {
 }
 
 export interface PendingRegistration {
+  id: string;
   name: string;
   email: string;
   mobile: string;
@@ -94,54 +95,50 @@ export async function saveUser(user: User): Promise<void> {
   }
 }
 
-export async function getPendingRegistration(email: string): Promise<PendingRegistration | null> {
+export async function getPendingRegistration(id: string): Promise<PendingRegistration | null> {
   try {
     if (isProduction && redis) {
       // Use Upstash Redis in production
-      const registrations = await redis.get<Record<string, PendingRegistration>>('pending-registrations') || {};
-      return registrations[email] || null;
+      const registration = await redis.get<PendingRegistration>(`pending:${id}`);
+      return registration;
     }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
     const registrations = JSON.parse(data);
-    return registrations[email] || null;
+    return registrations[id] || null;
   } catch (error) {
     console.error('Error reading pending registration:', error);
     return null;
   }
 }
 
-export async function savePendingRegistration(email: string, registration: PendingRegistration): Promise<void> {
+export async function savePendingRegistration(id: string, registration: PendingRegistration): Promise<void> {
   try {
     if (isProduction && redis) {
       // Use Upstash Redis in production
-      const registrations = await redis.get<Record<string, PendingRegistration>>('pending-registrations') || {};
-      registrations[email] = registration;
-      await redis.set('pending-registrations', registrations);
-      return;
+      await redis.set(`pending:${id}`, registration);
+    } else {
+      const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
+      const registrations = JSON.parse(data);
+      registrations[id] = registration;
+      await fs.promises.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(registrations, null, 2));
     }
-    const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
-    const registrations = JSON.parse(data);
-    registrations[email] = registration;
-    await fs.promises.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(registrations, null, 2));
   } catch (error) {
     console.error('Error saving pending registration:', error);
     throw error;
   }
 }
 
-export async function deletePendingRegistration(email: string): Promise<void> {
+export async function deletePendingRegistration(id: string): Promise<void> {
   try {
     if (isProduction && redis) {
       // Use Upstash Redis in production
-      const registrations = await redis.get<Record<string, PendingRegistration>>('pending-registrations') || {};
-      delete registrations[email];
-      await redis.set('pending-registrations', registrations);
-      return;
+      await redis.del(`pending:${id}`);
+    } else {
+      const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
+      const registrations = JSON.parse(data);
+      delete registrations[id];
+      await fs.promises.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(registrations, null, 2));
     }
-    const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
-    const registrations = JSON.parse(data);
-    delete registrations[email];
-    await fs.promises.writeFile(PENDING_REGISTRATIONS_FILE, JSON.stringify(registrations, null, 2));
   } catch (error) {
     console.error('Error deleting pending registration:', error);
     throw error;
@@ -153,9 +150,9 @@ export async function clearAllUsers(): Promise<void> {
     if (isProduction && redis) {
       // Use Upstash Redis in production
       await redis.set('users', []);
-      return;
+    } else {
+      await fs.promises.writeFile(USERS_FILE, '[]');
     }
-    await fs.promises.writeFile(USERS_FILE, '[]');
   } catch (error) {
     console.error('Error clearing users:', error);
     throw error;
