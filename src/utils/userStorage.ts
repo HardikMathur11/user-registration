@@ -1,18 +1,28 @@
 import fs from 'fs';
 import path from 'path';
 
+// In-memory storage for production environment
+let inMemoryUsers: any[] = [];
+let inMemoryPendingRegistrations: Record<string, any> = {};
+
+// Check if we're in a production environment
+const isProduction = process.env.NODE_ENV === 'production';
+
+// File paths for development environment
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending-registrations.json');
 
-// Initialize files if they don't exist
-if (!fs.existsSync(path.dirname(USERS_FILE))) {
-  fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
-}
-if (!fs.existsSync(USERS_FILE)) {
-  fs.writeFileSync(USERS_FILE, '[]');
-}
-if (!fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
-  fs.writeFileSync(PENDING_REGISTRATIONS_FILE, '{}');
+// Initialize files if they don't exist (development only)
+if (!isProduction) {
+  if (!fs.existsSync(path.dirname(USERS_FILE))) {
+    fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
+  }
+  if (!fs.existsSync(USERS_FILE)) {
+    fs.writeFileSync(USERS_FILE, '[]');
+  }
+  if (!fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
+    fs.writeFileSync(PENDING_REGISTRATIONS_FILE, '{}');
+  }
 }
 
 export interface User {
@@ -36,6 +46,9 @@ export interface PendingRegistration {
 // File system operations
 export async function getUsers(): Promise<User[]> {
   try {
+    if (isProduction) {
+      return inMemoryUsers;
+    }
     const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
@@ -56,6 +69,10 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
 
 export async function saveUser(user: User): Promise<void> {
   try {
+    if (isProduction) {
+      inMemoryUsers.push(user);
+      return;
+    }
     const users = await getUsers();
     users.push(user);
     await fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
@@ -67,6 +84,9 @@ export async function saveUser(user: User): Promise<void> {
 
 export async function getPendingRegistration(email: string): Promise<PendingRegistration | null> {
   try {
+    if (isProduction) {
+      return inMemoryPendingRegistrations[email] || null;
+    }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
     const registrations = JSON.parse(data);
     return registrations[email] || null;
@@ -78,6 +98,10 @@ export async function getPendingRegistration(email: string): Promise<PendingRegi
 
 export async function savePendingRegistration(email: string, registration: PendingRegistration): Promise<void> {
   try {
+    if (isProduction) {
+      inMemoryPendingRegistrations[email] = registration;
+      return;
+    }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
     const registrations = JSON.parse(data);
     registrations[email] = registration;
@@ -90,6 +114,10 @@ export async function savePendingRegistration(email: string, registration: Pendi
 
 export async function deletePendingRegistration(email: string): Promise<void> {
   try {
+    if (isProduction) {
+      delete inMemoryPendingRegistrations[email];
+      return;
+    }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
     const registrations = JSON.parse(data);
     delete registrations[email];
@@ -102,6 +130,10 @@ export async function deletePendingRegistration(email: string): Promise<void> {
 
 export async function clearAllUsers(): Promise<void> {
   try {
+    if (isProduction) {
+      inMemoryUsers = [];
+      return;
+    }
     await fs.promises.writeFile(USERS_FILE, '[]');
   } catch (error) {
     console.error('Error clearing users:', error);
