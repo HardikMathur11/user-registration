@@ -187,7 +187,7 @@ export default function Home() {
             </button>
           </div>
         </form>
-      </div>
+    </div>
       <Toaster position="top-right" />
     </main>
   );
