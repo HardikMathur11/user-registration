@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -93,6 +94,29 @@ export default function AdminPage() {
     }
   };
 
+  const handleClearAllUsers = async () => {
+    if (!isAuthenticated) return;
+    
+    setIsClearing(true);
+    try {
+      const response = await fetch('/api/clear-users', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to clear users');
+      }
+      
+      // Refresh the users list
+      fetchUsers();
+    } catch (error) {
+      console.error('Error clearing users:', error);
+      setError('Failed to clear users');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center px-4">
@@ -150,6 +174,17 @@ export default function AdminPage() {
           </div>
 
           <div className="px-6 py-8">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+              <button
+                onClick={handleClearAllUsers}
+                disabled={isClearing}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {isClearing ? 'Clearing...' : 'Clear All Users'}
+              </button>
+            </div>
+
             {loading ? (
               <div className="flex justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
