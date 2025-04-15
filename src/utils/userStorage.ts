@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
 // In-memory storage for development environment
 let inMemoryUsers: User[] = [];
@@ -8,6 +8,12 @@ const inMemoryPendingRegistrations: Record<string, PendingRegistration> = {};
 
 // Check if we're in a production environment
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Initialize Redis client for production
+const redis = isProduction ? new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+}) : null;
 
 // File paths for development environment
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
@@ -47,9 +53,9 @@ export interface PendingRegistration {
 // File system operations
 export async function getUsers(): Promise<User[]> {
   try {
-    if (isProduction) {
-      // Use Vercel KV in production
-      const users = await kv.get<User[]>('users') || [];
+    if (isProduction && redis) {
+      // Use Upstash Redis in production
+      const users = await redis.get<User[]>('users') || [];
       return users;
     }
     const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
@@ -72,11 +78,11 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
 
 export async function saveUser(user: User): Promise<void> {
   try {
-    if (isProduction) {
-      // Use Vercel KV in production
+    if (isProduction && redis) {
+      // Use Upstash Redis in production
       const users = await getUsers();
       users.push(user);
-      await kv.set('users', users);
+      await redis.set('users', users);
       return;
     }
     const users = await getUsers();
@@ -90,9 +96,9 @@ export async function saveUser(user: User): Promise<void> {
 
 export async function getPendingRegistration(email: string): Promise<PendingRegistration | null> {
   try {
-    if (isProduction) {
-      // Use Vercel KV in production
-      const registrations = await kv.get<Record<string, PendingRegistration>>('pending-registrations') || {};
+    if (isProduction && redis) {
+      // Use Upstash Redis in production
+      const registrations = await redis.get<Record<string, PendingRegistration>>('pending-registrations') || {};
       return registrations[email] || null;
     }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
@@ -106,11 +112,11 @@ export async function getPendingRegistration(email: string): Promise<PendingRegi
 
 export async function savePendingRegistration(email: string, registration: PendingRegistration): Promise<void> {
   try {
-    if (isProduction) {
-      // Use Vercel KV in production
-      const registrations = await kv.get<Record<string, PendingRegistration>>('pending-registrations') || {};
+    if (isProduction && redis) {
+      // Use Upstash Redis in production
+      const registrations = await redis.get<Record<string, PendingRegistration>>('pending-registrations') || {};
       registrations[email] = registration;
-      await kv.set('pending-registrations', registrations);
+      await redis.set('pending-registrations', registrations);
       return;
     }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
@@ -125,11 +131,11 @@ export async function savePendingRegistration(email: string, registration: Pendi
 
 export async function deletePendingRegistration(email: string): Promise<void> {
   try {
-    if (isProduction) {
-      // Use Vercel KV in production
-      const registrations = await kv.get<Record<string, PendingRegistration>>('pending-registrations') || {};
+    if (isProduction && redis) {
+      // Use Upstash Redis in production
+      const registrations = await redis.get<Record<string, PendingRegistration>>('pending-registrations') || {};
       delete registrations[email];
-      await kv.set('pending-registrations', registrations);
+      await redis.set('pending-registrations', registrations);
       return;
     }
     const data = await fs.promises.readFile(PENDING_REGISTRATIONS_FILE, 'utf-8');
@@ -144,9 +150,9 @@ export async function deletePendingRegistration(email: string): Promise<void> {
 
 export async function clearAllUsers(): Promise<void> {
   try {
-    if (isProduction) {
-      // Use Vercel KV in production
-      await kv.set('users', []);
+    if (isProduction && redis) {
+      // Use Upstash Redis in production
+      await redis.set('users', []);
       return;
     }
     await fs.promises.writeFile(USERS_FILE, '[]');
