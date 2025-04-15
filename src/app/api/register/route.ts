@@ -132,6 +132,7 @@ export async function POST(request: Request) {
         mobile: pendingRegistration.mobile,
         city: pendingRegistration.city,
         registeredAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       };
 
       // Save user to JSON file
