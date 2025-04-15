@@ -11,14 +11,10 @@ export default function Home() {
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
-    setSuccess(false);
 
     try {
       const response = await fetch('/api/register', {
@@ -50,13 +46,12 @@ export default function Home() {
           setCity('');
           setOtp('');
           setShowOtpInput(false);
-          setSuccess(true);
         }
       } else {
         throw new Error(data.error || 'Registration failed');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      toast.error(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +187,7 @@ export default function Home() {
             </button>
           </div>
         </form>
-    </div>
+      </div>
       <Toaster position="top-right" />
     </main>
   );
