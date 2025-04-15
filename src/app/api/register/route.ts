@@ -35,9 +35,41 @@ async function sendOTPEmail(email: string, otp: string): Promise<void> {
   await transporter.sendMail(mailOptions);
 }
 
+// Function to send welcome email
+async function sendWelcomeEmail(user: User): Promise<void> {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: 'Welcome to Our Platform',
+    text: `Dear ${user.name},\n\nWelcome to our platform! We're excited to have you on board.\n\nBest regards,\nThe Team`,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
 export async function POST(request: Request) {
   try {
-    const data = await request.json();
+    // Parse the request body
+    let data;
+    try {
+      const text = await request.text();
+      data = JSON.parse(text);
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      return NextResponse.json(
+        { error: 'Invalid request format' },
+        { status: 400 }
+      );
+    }
+
     const { name, email, mobile, city, otp } = data;
 
     console.log('Registration request:', { name, email, mobile, city, otp });
@@ -143,22 +175,7 @@ export async function POST(request: Request) {
 
       // Send welcome email
       try {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-          },
-        });
-
-        const mailOptions = {
-          from: process.env.EMAIL_USER,
-          to: newUser.email,
-          subject: 'Welcome to Our Platform',
-          text: `Dear ${newUser.name},\n\nWelcome to our platform! We're excited to have you on board.\n\nBest regards,\nThe Team`,
-        };
-
-        await transporter.sendMail(mailOptions);
+        await sendWelcomeEmail(newUser);
       } catch (error) {
         console.error('Error sending welcome email:', error);
         // Don't fail registration if welcome email fails

@@ -2,22 +2,26 @@ import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { getUsersByIds } from '@/utils/userStorage';
 
-// Create email transporter with secure configuration
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
 export async function POST(request: Request) {
   try {
-    const { message, userIds } = await request.json();
-    console.log('Received request:', { message, userIds });
+    // Parse the request body
+    let data;
+    try {
+      const text = await request.text();
+      data = JSON.parse(text);
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      return NextResponse.json(
+        { error: 'Invalid request format' },
+        { status: 400 }
+      );
+    }
 
+    const { message, userIds } = data;
+
+    console.log('Message request:', { message, userIds });
+
+    // Validate required fields
     if (!message) {
       return NextResponse.json(
         { error: 'Message is required' },
@@ -32,68 +36,69 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get selected users from JSON storage
+    // Get selected users
     const selectedUsers = getUsersByIds(userIds);
-    console.log('Selected users:', selectedUsers);
-    
+    console.log(`Found ${selectedUsers.length} users to send message to`);
+
     if (selectedUsers.length === 0) {
-      console.log('No valid users found. UserIds:', userIds);
       return NextResponse.json(
         { error: 'No valid users found' },
         { status: 400 }
       );
     }
 
-    // Verify email configuration
+    // Check if email configuration is available
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.error('Email configuration missing');
+      console.error('Email configuration is missing');
       return NextResponse.json(
-        { error: 'Email configuration is missing' },
+        { error: 'Email service is not configured' },
         { status: 500 }
       );
     }
 
-    // Send email to each selected user
-    const emailPromises = selectedUsers.map(async (user) => {
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: user.email,
-        subject: 'Message from Admin',
-        text: `Dear ${user.name},\n\n${message}\n\nBest regards,\nAdmin`,
-      };
-
-      try {
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`Message sent to ${user.email}:`, info.messageId);
-        return { success: true, email: user.email };
-      } catch (error) {
-        console.error(`Failed to send message to ${user.email}:`, error);
-        return { success: false, email: user.email, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
+    // Send emails to selected users
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
     });
 
-    const results = await Promise.all(emailPromises);
-    const failedEmails = results.filter(result => !result.success);
+    const results = await Promise.allSettled(
+      selectedUsers.map(async (user) => {
+        try {
+          const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'Message from Admin',
+            text: `Dear ${user.name},\n\n${message}\n\nBest regards,\nAdmin`,
+          };
 
-    if (failedEmails.length > 0) {
-      console.error('Failed to send messages to some users:', failedEmails);
-      return NextResponse.json({
-        success: false,
-        message: 'Some messages failed to send',
-        failedEmails: failedEmails.map(f => f.email)
-      }, { status: 207 });
-    }
+          await transporter.sendMail(mailOptions);
+          return { success: true, userId: user.id };
+        } catch (error) {
+          console.error(`Failed to send email to ${user.email}:`, error);
+          return { success: false, userId: user.id, error };
+        }
+      })
+    );
+
+    // Count successful and failed emails
+    const successful = results.filter((r) => r.status === 'fulfilled' && r.value.success).length;
+    const failed = results.filter((r) => r.status === 'rejected' || !r.value.success).length;
+
+    console.log(`Message sent to ${successful} users, failed for ${failed} users`);
 
     return NextResponse.json({
-      success: true,
-      message: 'Messages sent successfully',
-      sentTo: results.filter(r => r.success).map(r => r.email)
+      message: 'Message sent successfully',
+      sent: successful,
+      failed,
     });
-
   } catch (error) {
-    console.error('Error in message API:', error);
+    console.error('Error sending message:', error);
     return NextResponse.json(
-      { error: 'Failed to send messages', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to send message. Please try again.' },
       { status: 500 }
     );
   }
