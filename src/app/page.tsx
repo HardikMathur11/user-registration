@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
+// Main registration page component
 export default function Home() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
