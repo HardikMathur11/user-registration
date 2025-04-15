@@ -131,6 +131,7 @@ export async function POST(request: Request) {
         email: pendingRegistration.email,
         mobile: pendingRegistration.mobile,
         city: pendingRegistration.city,
+        registeredAt: new Date().toISOString(),
         createdAt: new Date().toISOString()
       };
 
