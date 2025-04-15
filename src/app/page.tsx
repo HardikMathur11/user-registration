@@ -118,7 +118,7 @@ export default function Home() {
           {step === 'form' ? (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="name" className="block text-sm font-medium text-black">
                   Full Name
                 </label>
                 <input
@@ -126,14 +126,14 @@ export default function Home() {
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
                   placeholder="Enter your full name"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="block text-sm font-medium text-black">
                   Email Address
                 </label>
                 <input
@@ -141,14 +141,14 @@ export default function Home() {
                   id="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
                   placeholder="Enter your email address"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="mobile" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="mobile" className="block text-sm font-medium text-black">
                   Mobile Number
                 </label>
                 <input
@@ -156,14 +156,14 @@ export default function Home() {
                   id="mobile"
                   value={formData.mobile}
                   onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
                   placeholder="Enter your 10-digit mobile number"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="city" className="block text-sm font-medium text-black">
                   City
                 </label>
                 <input
@@ -171,7 +171,7 @@ export default function Home() {
                   id="city"
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
                   placeholder="Enter your city"
                   required
                 />
@@ -218,7 +218,7 @@ export default function Home() {
           ) : (
             <form onSubmit={handleOtpSubmit} className="space-y-6">
               <div>
-                <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="otp" className="block text-sm font-medium text-black">
                   Enter OTP
                 </label>
                 <input
@@ -226,7 +226,7 @@ export default function Home() {
                   id="otp"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-500"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
                   placeholder="Enter the 6-digit OTP sent to your email"
                   required
                 />

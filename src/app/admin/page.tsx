@@ -14,6 +14,7 @@ interface User {
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
@@ -22,12 +23,24 @@ export default function AdminPage() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [nameFilter, setNameFilter] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchUsers();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    // Filter users based on name and city filters
+    const filtered = users.filter(user => {
+      const nameMatch = user.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const cityMatch = user.city.toLowerCase().includes(cityFilter.toLowerCase());
+      return nameMatch && cityMatch;
+    });
+    setFilteredUsers(filtered);
+  }, [users, nameFilter, cityFilter]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +60,7 @@ export default function AdminPage() {
       }
       const data = await response.json();
       setUsers(data);
+      setFilteredUsers(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
       toast.error('Failed to fetch users');
@@ -144,7 +158,7 @@ export default function AdminPage() {
                   id="password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
                   placeholder="Enter admin password"
                 />
               </div>
@@ -188,6 +202,36 @@ export default function AdminPage() {
               <div className="text-center text-red-600">{error}</div>
             ) : (
               <div className="space-y-8">
+                {/* Filter controls */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="nameFilter" className="block text-sm font-medium text-gray-700">
+                      Filter by Name
+                    </label>
+                    <input
+                      type="text"
+                      id="nameFilter"
+                      value={nameFilter}
+                      onChange={(e) => setNameFilter(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
+                      placeholder="Enter name to filter"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="cityFilter" className="block text-sm font-medium text-gray-700">
+                      Filter by City
+                    </label>
+                    <input
+                      type="text"
+                      id="cityFilter"
+                      value={cityFilter}
+                      onChange={(e) => setCityFilter(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
+                      placeholder="Enter city to filter"
+                    />
+                  </div>
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -213,7 +257,7 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map((user) => (
+                      {filteredUsers.map((user) => (
                         <tr key={user.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
@@ -256,7 +300,7 @@ export default function AdminPage() {
                     <textarea
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-black placeholder-gray-400"
                       rows={4}
                       placeholder="Enter your message here..."
                     />
