@@ -44,6 +44,16 @@ export async function getUsers(): Promise<User[]> {
   }
 }
 
+export async function getUsersByIds(userIds: string[]): Promise<User[]> {
+  try {
+    const users = await getUsers();
+    return users.filter(user => userIds.includes(user.id));
+  } catch (error) {
+    console.error('Error getting users by IDs:', error);
+    return [];
+  }
+}
+
 export async function saveUser(user: User): Promise<void> {
   try {
     const users = await getUsers();

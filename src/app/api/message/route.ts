@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     // Get selected users
-    const selectedUsers = getUsersByIds(userIds);
+    const selectedUsers = await getUsersByIds(userIds);
     console.log(`Found ${selectedUsers.length} users to send message to`);
 
     if (selectedUsers.length === 0) {
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error sending message:', error);
     return NextResponse.json(
-      { error: 'Failed to send message. Please try again.' },
+      { error: 'Failed to send message' },
       { status: 500 }
     );
   }
