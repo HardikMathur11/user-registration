@@ -5,7 +5,8 @@ import {
   saveUser, 
   getPendingRegistration, 
   savePendingRegistration, 
-  deletePendingRegistration
+  deletePendingRegistration,
+  getUserByEmail
 } from '@/utils/userStorage';
 
 // Function to generate a 6-digit OTP
@@ -93,6 +94,15 @@ export async function POST(request: Request) {
       if (!name || !email || !mobile || !city) {
         return NextResponse.json(
           { error: 'Name, email, mobile, and city are required' },
+          { status: 400 }
+        );
+      }
+
+      // Check if user already exists
+      const existingUser = await getUserByEmail(email);
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'User with this email already registered' },
           { status: 400 }
         );
       }
@@ -193,7 +203,7 @@ export async function POST(request: Request) {
     await deletePendingRegistration(email);
 
     // Send welcome email (don't wait for it to complete)
-    sendWelcomeEmail(user.email, user.name).catch(error => {
+    await sendWelcomeEmail(user.email, user.name).catch(error => {
       console.error('Error sending welcome email:', error);
     });
 

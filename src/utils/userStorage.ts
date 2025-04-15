@@ -139,4 +139,14 @@ export async function clearAllUsers(): Promise<void> {
     console.error('Error clearing users:', error);
     throw error;
   }
+}
+
+export async function getUserByEmail(email: string): Promise<User | null> {
+  try {
+    const users = await getUsers();
+    return users.find(user => user.email === email) || null;
+  } catch (error) {
+    console.error('Error getting user by email:', error);
+    return null;
+  }
 } 
