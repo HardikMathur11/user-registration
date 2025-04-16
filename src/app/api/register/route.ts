@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes from now
 
       // Save pending registration
-      await savePendingRegistration(email, {
+      await savePendingRegistration({
         id: email,
         name,
         email,
