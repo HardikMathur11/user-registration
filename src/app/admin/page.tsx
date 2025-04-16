@@ -27,6 +27,14 @@ export default function AdminPage() {
   const [cityFilter, setCityFilter] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Check authentication state on mount
+  useEffect(() => {
+    const authState = localStorage.getItem('adminAuthenticated');
+    if (authState === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchUsers();
@@ -47,10 +55,17 @@ export default function AdminPage() {
     e.preventDefault();
     if (adminPassword === 'admin123') {
       setIsAuthenticated(true);
+      localStorage.setItem('adminAuthenticated', 'true');
       toast.success('Login successful!');
     } else {
       toast.error('Invalid password');
     }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('adminAuthenticated');
+    toast.success('Logged out successfully');
   };
 
   const fetchUsers = async () => {
@@ -216,6 +231,12 @@ export default function AdminPage() {
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isClearing ? 'Clearing...' : 'Clear All Users'}
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
+                >
+                  Logout
                 </button>
               </div>
             </div>
