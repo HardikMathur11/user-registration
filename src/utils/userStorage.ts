@@ -7,10 +7,30 @@ const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending_registrations.json');
 
 // Initialize Redis client with explicit configuration
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-});
+let redis: Redis;
+try {
+  console.log('Initializing Redis client with URL:', process.env.UPSTASH_REDIS_REST_URL ? 'URL is set' : 'URL is not set');
+  console.log('Redis token is set:', !!process.env.UPSTASH_REDIS_REST_TOKEN);
+  
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL || '',
+    token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+  });
+  
+  // Test Redis connection
+  if (process.env.NODE_ENV === 'production') {
+    console.log('Testing Redis connection in production...');
+    redis.ping().then(() => {
+      console.log('Redis connection successful');
+    }).catch(err => {
+      console.error('Redis connection failed:', err);
+    });
+  }
+} catch (error) {
+  console.error('Error initializing Redis client:', error);
+  // Fallback to file system if Redis initialization fails
+  console.log('Falling back to file system storage');
+}
 
 // Initialize files if they don't exist
 if (!fs.existsSync(path.dirname(USERS_FILE))) {
@@ -46,9 +66,17 @@ export async function getUsers(): Promise<User[]> {
   try {
     if (process.env.NODE_ENV === 'production') {
       console.log('Fetching users from Redis in production');
-      const users = await redis.get<User[]>('users');
-      console.log('Redis users:', users);
-      return users || [];
+      try {
+        const users = await redis.get<User[]>('users');
+        console.log('Redis users:', users);
+        return users || [];
+      } catch (redisError) {
+        console.error('Error fetching users from Redis:', redisError);
+        console.log('Falling back to file system for users');
+        // Fallback to file system if Redis fails
+        const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
+        return JSON.parse(data);
+      }
     } else {
       console.log('Fetching users from file system in development');
       const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
@@ -73,18 +101,37 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
 export async function saveUser(user: User): Promise<void> {
   try {
     if (process.env.NODE_ENV === 'production') {
-      console.log('Saving user to Redis in production');
-      const users = await getUsers();
-      const existingUserIndex = users.findIndex(u => u.id === user.id);
-      if (existingUserIndex >= 0) {
-        users[existingUserIndex] = user;
-      } else {
-        users.push(user);
+      console.log('Saving user to Redis in production:', user);
+      try {
+        const users = await getUsers();
+        const existingUserIndex = users.findIndex(u => u.id === user.id);
+        if (existingUserIndex >= 0) {
+          users[existingUserIndex] = user;
+        } else {
+          users.push(user);
+        }
+        await redis.set('users', users);
+        console.log('User saved to Redis successfully');
+        
+        // Also save to file system as backup
+        await fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
+        console.log('User also saved to file system as backup');
+      } catch (redisError) {
+        console.error('Error saving user to Redis:', redisError);
+        console.log('Falling back to file system for saving user');
+        // Fallback to file system if Redis fails
+        const users = await getUsers();
+        const existingUserIndex = users.findIndex(u => u.id === user.id);
+        if (existingUserIndex >= 0) {
+          users[existingUserIndex] = user;
+        } else {
+          users.push(user);
+        }
+        await fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
+        console.log('User saved to file system successfully');
       }
-      await redis.set('users', users);
-      console.log('User saved to Redis successfully');
     } else {
-      console.log('Saving user to file system in development');
+      console.log('Saving user to file system in development:', user);
       const users = await getUsers();
       const existingUserIndex = users.findIndex(u => u.id === user.id);
       if (existingUserIndex >= 0) {
@@ -153,8 +200,20 @@ export async function clearAllUsers(): Promise<void> {
   try {
     if (process.env.NODE_ENV === 'production') {
       console.log('Clearing users from Redis in production');
-      await redis.set('users', []);
-      console.log('Users cleared from Redis successfully');
+      try {
+        await redis.set('users', []);
+        console.log('Users cleared from Redis successfully');
+        
+        // Also clear file system as backup
+        await fs.promises.writeFile(USERS_FILE, '[]');
+        console.log('Users also cleared from file system as backup');
+      } catch (redisError) {
+        console.error('Error clearing users from Redis:', redisError);
+        console.log('Falling back to file system for clearing users');
+        // Fallback to file system if Redis fails
+        await fs.promises.writeFile(USERS_FILE, '[]');
+        console.log('Users cleared from file system successfully');
+      }
     } else {
       console.log('Clearing users from file system in development');
       await fs.promises.writeFile(USERS_FILE, '[]');
