@@ -6,7 +6,8 @@ import {
   getPendingRegistration, 
   savePendingRegistration, 
   deletePendingRegistration,
-  getUserByEmail
+  getUserByEmail,
+  PendingRegistration
 } from '@/utils/userStorage';
 
 // Function to generate a 6-digit OTP
@@ -138,7 +139,7 @@ export async function POST(request: Request) {
         city,
         otp: generatedOTP,
         expiresAt,
-      });
+      } as PendingRegistration);
 
       // Send OTP email
       const emailSent = await sendOTPEmail(email, generatedOTP);
