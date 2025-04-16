@@ -6,11 +6,8 @@ import { Redis } from '@upstash/redis';
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending_registrations.json');
 
-// Initialize Redis client
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-});
+// Initialize Redis client using fromEnv
+const redis = Redis.fromEnv();
 
 // Initialize files if they don't exist
 if (!fs.existsSync(path.dirname(USERS_FILE))) {
@@ -47,7 +44,6 @@ export async function getUsers(): Promise<User[]> {
     if (process.env.NODE_ENV === 'production') {
       const users = await redis.get<User[]>('users');
       if (!users) {
-        // If no users exist, initialize with empty array
         await redis.set('users', []);
         return [];
       }
@@ -76,7 +72,6 @@ export async function saveUser(user: User): Promise<void> {
   try {
     if (process.env.NODE_ENV === 'production') {
       const users = await getUsers();
-      // Check if user already exists
       const existingUserIndex = users.findIndex(u => u.id === user.id);
       if (existingUserIndex >= 0) {
         users[existingUserIndex] = user;
