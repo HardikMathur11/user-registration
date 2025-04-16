@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         email,
         mobile,
         city,
-        otp,
+        otp: generatedOTP,
         expiresAt,
       });
 
