@@ -6,10 +6,29 @@ import { Redis } from '@upstash/redis';
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending-registrations.json');
 
+// Function to normalize Redis URL
+function normalizeRedisUrl(url: string): string {
+  if (!url) return '';
+  // Convert rediss:// to https:// if needed
+  if (url.startsWith('rediss://')) {
+    return url.replace('rediss://', 'https://');
+  }
+  return url;
+}
+
 // Initialize Redis client with explicit configuration
 // Try different environment variable names that might be available
+const redisUrl = normalizeRedisUrl(
+  process.env.UPSTASH_REDIS_REST_URL || 
+  process.env.REDIS_URL || 
+  process.env.KV_URL || 
+  ''
+);
+
+console.log('Using Redis URL:', redisUrl ? 'URL is set' : 'URL is not set');
+
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL || process.env.KV_URL || '',
+  url: redisUrl,
   token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '',
 });
 
