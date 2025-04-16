@@ -71,17 +71,35 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     setIsRefreshing(true);
     try {
+      console.log('Fetching users from API...');
       const response = await fetch('/api/users');
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
       }
-      const data = await response.json();
+      
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing JSON:', parseError);
+        throw new Error('Invalid JSON response from server');
+      }
+      
+      console.log('Parsed data:', data);
       setUsers(data);
       setFilteredUsers(data);
       toast.success('Users refreshed successfully');
     } catch (err) {
+      console.error('Error in fetchUsers:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
-      toast.error('Failed to fetch users');
+      toast.error(err instanceof Error ? err.message : 'Failed to fetch users');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
