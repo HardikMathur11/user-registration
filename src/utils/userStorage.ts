@@ -6,8 +6,11 @@ import { Redis } from '@upstash/redis';
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending_registrations.json');
 
-// Initialize Redis client using fromEnv
-const redis = Redis.fromEnv();
+// Initialize Redis client
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+});
 
 // Initialize files if they don't exist
 if (!fs.existsSync(path.dirname(USERS_FILE))) {
@@ -42,8 +45,10 @@ export interface PendingRegistration {
 export async function getUsers(): Promise<User[]> {
   try {
     if (process.env.NODE_ENV === 'production') {
+      console.log('Fetching users from Redis');
       const users = await redis.get<User[]>('users');
-      return users || [];  // Just return empty array if no users, don't set it
+      console.log('Redis users:', users);
+      return users || [];
     } else {
       const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
       return JSON.parse(data);
