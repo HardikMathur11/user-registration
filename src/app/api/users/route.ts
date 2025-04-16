@@ -21,11 +21,9 @@ export async function GET() {
         error: 'Failed to fetch users', 
         details: error instanceof Error ? error.message : 'Unknown error',
         env: {
-          hasUpstashUrl: !!process.env.UPSTASH_REDIS_REST_URL,
-          hasUpstashToken: !!process.env.UPSTASH_REDIS_REST_TOKEN,
-          hasRedisUrl: !!process.env.REDIS_URL,
-          hasKvUrl: !!process.env.KV_URL,
-          hasKvToken: !!process.env.KV_REST_API_TOKEN,
+          hasKvRestApiUrl: !!process.env.KV_REST_API_URL,
+          hasKvRestApiToken: !!process.env.KV_REST_API_TOKEN,
+          kvRestApiUrl: process.env.KV_REST_API_URL ? 'URL is set' : 'URL is not set',
           nodeEnv: process.env.NODE_ENV
         }
       },
