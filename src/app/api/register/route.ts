@@ -18,6 +18,8 @@ function generateOTP(): string {
 // Function to send OTP email
 async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
   try {
+    console.log('Sending OTP email to:', email);
+    
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -26,7 +28,7 @@ async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
       },
     });
 
-    await transporter.sendMail({
+    const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'Your OTP for Registration',
@@ -41,8 +43,10 @@ async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
           <p>If you did not request this OTP, please ignore this email.</p>
         </div>
       `,
-    });
+    };
 
+    await transporter.sendMail(mailOptions);
+    console.log('OTP email sent successfully to:', email);
     return true;
   } catch (error) {
     console.error('Error sending OTP email:', error);
@@ -53,6 +57,8 @@ async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
 // Function to send welcome email
 async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
   try {
+    console.log('Sending welcome email to:', email);
+    
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -61,7 +67,7 @@ async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
       },
     });
 
-    await transporter.sendMail({
+    const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
       subject: 'Welcome to Our Platform',
@@ -74,8 +80,10 @@ async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
           <p>Best regards,<br>The Team</p>
         </div>
       `,
-    });
+    };
 
+    await transporter.sendMail(mailOptions);
+    console.log('Welcome email sent successfully to:', email);
     return true;
   } catch (error) {
     console.error('Error sending welcome email:', error);
@@ -93,6 +101,7 @@ export async function POST(request: Request) {
     if (!otp) {
       // Validate required fields
       if (!name || !email || !mobile || !city) {
+        console.log('Missing required fields:', { name, email, mobile, city });
         return NextResponse.json(
           { error: 'Name, email, mobile, and city are required' },
           { status: 400 }
@@ -102,6 +111,7 @@ export async function POST(request: Request) {
       // Check if user already exists
       const existingUser = await getUserByEmail(email);
       if (existingUser) {
+        console.log('User already exists:', email);
         return NextResponse.json(
           { error: 'User with this email already registered' },
           { status: 400 }
@@ -111,6 +121,7 @@ export async function POST(request: Request) {
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
+        console.log('Invalid email format:', email);
         return NextResponse.json(
           { error: 'Invalid email format' },
           { status: 400 }
@@ -120,6 +131,7 @@ export async function POST(request: Request) {
       // Validate mobile number format (10 digits)
       const mobileRegex = /^[0-9]{10}$/;
       if (!mobileRegex.test(mobile)) {
+        console.log('Invalid mobile format:', mobile);
         return NextResponse.json(
           { error: 'Mobile number must be 10 digits' },
           { status: 400 }
@@ -130,27 +142,44 @@ export async function POST(request: Request) {
       const generatedOTP = generateOTP();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes from now
 
-      // Save pending registration
-      await savePendingRegistration({
-        id: email,
-        name,
-        email,
-        mobile,
-        city,
-        otp: generatedOTP,
-        expiresAt,
-      } as PendingRegistration);
+      try {
+        console.log('Creating pending registration for:', email);
+        // Save pending registration
+        await savePendingRegistration({
+          id: email,
+          name,
+          email,
+          mobile,
+          city,
+          otp: generatedOTP,
+          expiresAt,
+        } as PendingRegistration);
+        console.log('Pending registration saved successfully');
 
-      // Send OTP email
-      const emailSent = await sendOTPEmail(email, generatedOTP);
-      if (!emailSent) {
+        // Send OTP email
+        console.log('Attempting to send OTP email to:', email);
+        const emailSent = await sendOTPEmail(email, generatedOTP);
+        if (!emailSent) {
+          console.error('Failed to send OTP email to:', email);
+          return NextResponse.json(
+            { error: 'Failed to send OTP email' },
+            { status: 500 }
+          );
+        }
+        console.log('OTP email sent successfully to:', email);
+
+        return NextResponse.json({ message: 'OTP sent successfully' });
+      } catch (error) {
+        console.error('Error in registration process:', error);
         return NextResponse.json(
-          { error: 'Failed to send OTP email' },
+          { 
+            error: 'Failed to process registration', 
+            details: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          },
           { status: 500 }
         );
       }
-
-      return NextResponse.json({ message: 'OTP sent successfully' });
     }
 
     // If OTP is provided, verify it and complete registration
@@ -213,7 +242,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
-      { error: 'Registration failed' },
+      { error: 'Registration failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

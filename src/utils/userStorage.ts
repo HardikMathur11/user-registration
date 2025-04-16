@@ -20,13 +20,20 @@ const redis = new Redis({
 });
 
 // Initialize files if they don't exist
+console.log('Initializing data files...');
+console.log('Users file path:', USERS_FILE);
+console.log('Pending registrations file path:', PENDING_REGISTRATIONS_FILE);
+
 if (!fs.existsSync(path.dirname(USERS_FILE))) {
+  console.log('Creating data directory...');
   fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
 }
 if (!fs.existsSync(USERS_FILE)) {
+  console.log('Creating users file...');
   fs.writeFileSync(USERS_FILE, '[]');
 }
 if (!fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
+  console.log('Creating pending registrations file...');
   fs.writeFileSync(PENDING_REGISTRATIONS_FILE, '[]');
 }
 
@@ -63,8 +70,11 @@ export async function getUsers(): Promise<User[]> {
     }
   } else {
     try {
+      console.log('Fetching users from file system...');
       const data = fs.readFileSync(USERS_FILE, 'utf-8');
-      return JSON.parse(data);
+      const users = JSON.parse(data);
+      console.log('Users fetched from file system:', users);
+      return users;
     } catch (error) {
       console.error('Error reading users file:', error);
       return [];
@@ -92,9 +102,11 @@ export async function saveUser(user: User): Promise<void> {
     }
   } else {
     try {
+      console.log('Saving user to file system...');
       const users = await getUsers();
       users.push(user);
       fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+      console.log('User saved to file system successfully');
     } catch (error) {
       console.error('Error saving user to file:', error);
       throw error;
@@ -103,10 +115,12 @@ export async function saveUser(user: User): Promise<void> {
 }
 
 export async function getPendingRegistration(id: string): Promise<PendingRegistration | null> {
+  console.log('Getting pending registration for ID:', id);
   if (process.env.NODE_ENV === 'production') {
     try {
       console.log('Fetching pending registration from Redis:', id);
       const registration = await redis.get<PendingRegistration>(`pending:${id}`);
+      console.log('Pending registration from Redis:', registration);
       return registration;
     } catch (error) {
       console.error('Error fetching pending registration from Redis:', error);
@@ -114,9 +128,12 @@ export async function getPendingRegistration(id: string): Promise<PendingRegistr
     }
   } else {
     try {
+      console.log('Fetching pending registration from file system:', id);
       const data = fs.readFileSync(PENDING_REGISTRATIONS_FILE, 'utf-8');
       const registrations: PendingRegistration[] = JSON.parse(data);
-      return registrations.find(r => r.id === id) || null;
+      const registration = registrations.find(r => r.id === id) || null;
+      console.log('Pending registration from file system:', registration);
+      return registration;
     } catch (error) {
       console.error('Error reading pending registration:', error);
       return null;
@@ -139,15 +156,38 @@ export async function savePendingRegistration(registration: PendingRegistration)
     }
   } else {
     try {
-      const data = fs.readFileSync(PENDING_REGISTRATIONS_FILE, 'utf-8');
-      const registrations: PendingRegistration[] = JSON.parse(data);
+      console.log('Saving pending registration to file system...');
+      let registrations: PendingRegistration[] = [];
+      
+      // Check if file exists and has content
+      if (fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
+        const fileContent = fs.readFileSync(PENDING_REGISTRATIONS_FILE, 'utf-8');
+        if (fileContent.trim()) {
+          try {
+            registrations = JSON.parse(fileContent);
+            // Ensure registrations is an array
+            if (!Array.isArray(registrations)) {
+              console.log('Registrations is not an array, initializing empty array');
+              registrations = [];
+            }
+          } catch (parseError) {
+            console.error('Error parsing registrations file:', parseError);
+            registrations = [];
+          }
+        }
+      }
+      
+      // Find and update or add the registration
       const index = registrations.findIndex(r => r.id === registration.id);
       if (index >= 0) {
         registrations[index] = registration;
       } else {
         registrations.push(registration);
       }
+      
+      // Write back to file
       fs.writeFileSync(PENDING_REGISTRATIONS_FILE, JSON.stringify(registrations, null, 2));
+      console.log('Pending registration saved to file system successfully');
     } catch (error) {
       console.error('Error saving pending registration:', error);
       throw error;
