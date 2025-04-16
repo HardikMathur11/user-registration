@@ -2,8 +2,20 @@
 
 import { useState } from 'react';
 
+interface RedisTestResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  details?: string;
+  env?: {
+    hasUrl: boolean;
+    hasToken: boolean;
+    nodeEnv: string;
+  };
+}
+
 export default function RedisTestPage() {
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<RedisTestResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +32,7 @@ export default function RedisTestPage() {
       console.log('Response text:', text);
       
       try {
-        const data = JSON.parse(text);
+        const data = JSON.parse(text) as RedisTestResult;
         console.log('Parsed data:', data);
         setResult(data);
       } catch (parseError: unknown) {
