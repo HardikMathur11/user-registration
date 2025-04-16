@@ -131,11 +131,12 @@ export async function POST(request: Request) {
 
       // Save pending registration
       await savePendingRegistration(email, {
+        id: email,
         name,
         email,
         mobile,
         city,
-        otp: generatedOTP,
+        otp,
         expiresAt,
       });
 
