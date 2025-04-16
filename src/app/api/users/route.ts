@@ -17,7 +17,18 @@ export async function GET() {
   } catch (error) {
     console.error('API: Error fetching users:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch users', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to fetch users', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        env: {
+          hasUpstashUrl: !!process.env.UPSTASH_REDIS_REST_URL,
+          hasUpstashToken: !!process.env.UPSTASH_REDIS_REST_TOKEN,
+          hasRedisUrl: !!process.env.REDIS_URL,
+          hasKvUrl: !!process.env.KV_URL,
+          hasKvToken: !!process.env.KV_REST_API_TOKEN,
+          nodeEnv: process.env.NODE_ENV
+        }
+      },
       { status: 500 }
     );
   }

@@ -6,8 +6,12 @@ import { Redis } from '@upstash/redis';
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending-registrations.json');
 
-// Initialize Redis client
-const redis = Redis.fromEnv();
+// Initialize Redis client with explicit configuration
+// Try different environment variable names that might be available
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL || process.env.KV_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '',
+});
 
 // Initialize files if they don't exist
 if (!fs.existsSync(path.dirname(USERS_FILE))) {
