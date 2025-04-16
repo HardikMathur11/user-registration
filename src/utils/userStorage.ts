@@ -24,17 +24,24 @@ console.log('Initializing data files...');
 console.log('Users file path:', USERS_FILE);
 console.log('Pending registrations file path:', PENDING_REGISTRATIONS_FILE);
 
-if (!fs.existsSync(path.dirname(USERS_FILE))) {
-  console.log('Creating data directory...');
-  fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
-}
-if (!fs.existsSync(USERS_FILE)) {
-  console.log('Creating users file...');
-  fs.writeFileSync(USERS_FILE, '[]');
-}
-if (!fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
-  console.log('Creating pending registrations file...');
-  fs.writeFileSync(PENDING_REGISTRATIONS_FILE, '[]');
+// Only initialize files in development environment
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    if (!fs.existsSync(path.dirname(USERS_FILE))) {
+      console.log('Creating data directory...');
+      fs.mkdirSync(path.dirname(USERS_FILE), { recursive: true });
+    }
+    if (!fs.existsSync(USERS_FILE)) {
+      console.log('Creating users file...');
+      fs.writeFileSync(USERS_FILE, '[]');
+    }
+    if (!fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
+      console.log('Creating pending registrations file...');
+      fs.writeFileSync(PENDING_REGISTRATIONS_FILE, '[]');
+    }
+  } catch (error) {
+    console.error('Error initializing files:', error);
+  }
 }
 
 export interface User {
@@ -157,35 +164,14 @@ export async function savePendingRegistration(registration: PendingRegistration)
   } else {
     try {
       console.log('Saving pending registration to file system...');
-      let registrations: PendingRegistration[] = [];
-      
-      // Check if file exists and has content
-      if (fs.existsSync(PENDING_REGISTRATIONS_FILE)) {
-        const fileContent = fs.readFileSync(PENDING_REGISTRATIONS_FILE, 'utf-8');
-        if (fileContent.trim()) {
-          try {
-            registrations = JSON.parse(fileContent);
-            // Ensure registrations is an array
-            if (!Array.isArray(registrations)) {
-              console.log('Registrations is not an array, initializing empty array');
-              registrations = [];
-            }
-          } catch (parseError) {
-            console.error('Error parsing registrations file:', parseError);
-            registrations = [];
-          }
-        }
-      }
-      
-      // Find and update or add the registration
+      const data = fs.readFileSync(PENDING_REGISTRATIONS_FILE, 'utf-8');
+      const registrations: PendingRegistration[] = JSON.parse(data);
       const index = registrations.findIndex(r => r.id === registration.id);
       if (index >= 0) {
         registrations[index] = registration;
       } else {
         registrations.push(registration);
       }
-      
-      // Write back to file
       fs.writeFileSync(PENDING_REGISTRATIONS_FILE, JSON.stringify(registrations, null, 2));
       console.log('Pending registration saved to file system successfully');
     } catch (error) {
