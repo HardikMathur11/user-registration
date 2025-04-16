@@ -6,7 +6,7 @@ import { Redis } from '@upstash/redis';
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 const PENDING_REGISTRATIONS_FILE = path.join(process.cwd(), 'data', 'pending_registrations.json');
 
-// Initialize Redis client
+// Initialize Redis client with explicit configuration
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL || '',
   token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
@@ -45,11 +45,12 @@ export interface PendingRegistration {
 export async function getUsers(): Promise<User[]> {
   try {
     if (process.env.NODE_ENV === 'production') {
-      console.log('Fetching users from Redis');
+      console.log('Fetching users from Redis in production');
       const users = await redis.get<User[]>('users');
       console.log('Redis users:', users);
       return users || [];
     } else {
+      console.log('Fetching users from file system in development');
       const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
       return JSON.parse(data);
     }
@@ -72,6 +73,7 @@ export async function getUsersByIds(userIds: string[]): Promise<User[]> {
 export async function saveUser(user: User): Promise<void> {
   try {
     if (process.env.NODE_ENV === 'production') {
+      console.log('Saving user to Redis in production');
       const users = await getUsers();
       const existingUserIndex = users.findIndex(u => u.id === user.id);
       if (existingUserIndex >= 0) {
@@ -80,7 +82,9 @@ export async function saveUser(user: User): Promise<void> {
         users.push(user);
       }
       await redis.set('users', users);
+      console.log('User saved to Redis successfully');
     } else {
+      console.log('Saving user to file system in development');
       const users = await getUsers();
       const existingUserIndex = users.findIndex(u => u.id === user.id);
       if (existingUserIndex >= 0) {
@@ -89,6 +93,7 @@ export async function saveUser(user: User): Promise<void> {
         users.push(user);
       }
       await fs.promises.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
+      console.log('User saved to file system successfully');
     }
   } catch (error) {
     console.error('Error saving user:', error);
@@ -147,9 +152,13 @@ export async function deletePendingRegistration(id: string): Promise<void> {
 export async function clearAllUsers(): Promise<void> {
   try {
     if (process.env.NODE_ENV === 'production') {
+      console.log('Clearing users from Redis in production');
       await redis.set('users', []);
+      console.log('Users cleared from Redis successfully');
     } else {
+      console.log('Clearing users from file system in development');
       await fs.promises.writeFile(USERS_FILE, '[]');
+      console.log('Users cleared from file system successfully');
     }
   } catch (error) {
     console.error('Error clearing users:', error);
