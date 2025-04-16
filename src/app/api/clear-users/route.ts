@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const { password } = await request.json();
     
     // Verify admin password
-    if (password !== 'admin123') {
+    if (password !== process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

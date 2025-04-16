@@ -112,14 +112,17 @@ export default function AdminPage() {
         }),
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        throw new Error(data.error || 'Failed to send message');
       }
 
-      toast.success('Message sent successfully!');
+      toast.success(`Message sent successfully to ${data.sent} users${data.failed > 0 ? `, failed for ${data.failed} users` : ''}`);
       setMessage('');
       setSelectedUsers([]);
     } catch (err) {
+      console.error('Error sending message:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setSendingMessage(false);
@@ -140,7 +143,7 @@ export default function AdminPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password: 'admin123' }),
+        body: JSON.stringify({ password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD }),
       });
       
       const data = await response.json();
