@@ -43,11 +43,7 @@ export async function getUsers(): Promise<User[]> {
   try {
     if (process.env.NODE_ENV === 'production') {
       const users = await redis.get<User[]>('users');
-      if (!users) {
-        await redis.set('users', []);
-        return [];
-      }
-      return users;
+      return users || [];  // Just return empty array if no users, don't set it
     } else {
       const data = await fs.promises.readFile(USERS_FILE, 'utf-8');
       return JSON.parse(data);
