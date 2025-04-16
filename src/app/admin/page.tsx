@@ -53,7 +53,7 @@ export default function AdminPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPassword === 'admin123') {
+    if (adminPassword === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       localStorage.setItem('adminAuthenticated', 'true');
       toast.success('Login successful!');
