@@ -92,6 +92,15 @@ export default function AdminPage() {
         throw new Error('Invalid JSON response from server');
       }
       
+      // Check if data is an array
+      if (!Array.isArray(data)) {
+        console.error('Data is not an array:', data);
+        if (data && data.error) {
+          throw new Error(data.error);
+        }
+        data = []; // Default to empty array if not an array
+      }
+      
       console.log('Parsed data:', data);
       setUsers(data);
       setFilteredUsers(data);
@@ -100,6 +109,9 @@ export default function AdminPage() {
       console.error('Error in fetchUsers:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
       toast.error(err instanceof Error ? err.message : 'Failed to fetch users');
+      // Set empty arrays to prevent UI errors
+      setUsers([]);
+      setFilteredUsers([]);
     } finally {
       setLoading(false);
       setIsRefreshing(false);

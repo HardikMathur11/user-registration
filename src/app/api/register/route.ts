@@ -94,7 +94,18 @@ async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
 export async function POST(request: Request) {
   try {
     console.log('Registration request received');
-    const body = await request.json();
+    let body;
+    
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+    
     const { name, email, mobile, city, otp } = body;
 
     // If OTP is not provided, generate and send it
@@ -174,8 +185,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { 
             error: 'Failed to process registration', 
-            details: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined
+            details: error instanceof Error ? error.message : 'Unknown error'
           },
           { status: 500 }
         );

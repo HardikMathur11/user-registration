@@ -4,6 +4,12 @@ import { getUsers } from '@/utils/userStorage';
 export async function GET() {
   try {
     console.log('API: Fetching users from API route');
+    console.log('API: Environment variables:', {
+      hasKvRestApiUrl: !!process.env.KV_REST_API_URL,
+      hasKvRestApiToken: !!process.env.KV_REST_API_TOKEN,
+      nodeEnv: process.env.NODE_ENV
+    });
+    
     const users = await getUsers();
     console.log('API: Users fetched successfully, count:', users.length);
     
@@ -16,6 +22,8 @@ export async function GET() {
     return NextResponse.json(users);
   } catch (error) {
     console.error('API: Error fetching users:', error);
+    
+    // Return a valid JSON response even in case of error
     return NextResponse.json(
       { 
         error: 'Failed to fetch users', 
@@ -23,7 +31,6 @@ export async function GET() {
         env: {
           hasKvRestApiUrl: !!process.env.KV_REST_API_URL,
           hasKvRestApiToken: !!process.env.KV_REST_API_TOKEN,
-          kvRestApiUrl: process.env.KV_REST_API_URL ? 'URL is set' : 'URL is not set',
           nodeEnv: process.env.NODE_ENV
         }
       },
