@@ -19,6 +19,7 @@ function generateOTP(): string {
 async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
   try {
     console.log('Sending OTP email to:', email);
+    console.log('Using email user:', process.env.EMAIL_USER);
     
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -45,11 +46,16 @@ async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
     console.log('OTP email sent successfully to:', email);
+    console.log('Message ID:', info.messageId);
     return true;
   } catch (error) {
     console.error('Error sending OTP email:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     return false;
   }
 }
@@ -58,6 +64,7 @@ async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
 async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
   try {
     console.log('Sending welcome email to:', email);
+    console.log('Using email user:', process.env.EMAIL_USER);
     
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -82,11 +89,16 @@ async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
     console.log('Welcome email sent successfully to:', email);
+    console.log('Message ID:', info.messageId);
     return true;
   } catch (error) {
     console.error('Error sending welcome email:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     return false;
   }
 }
@@ -94,19 +106,36 @@ async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
 export async function POST(request: Request) {
   try {
     console.log('Registration request received');
+    console.log('Request headers:', Object.fromEntries(request.headers.entries()));
+    
     let body;
+    let bodyText = '';
     
     try {
-      body = await request.json();
+      bodyText = await request.text();
+      console.log('Request body text:', bodyText);
+      
+      if (!bodyText) {
+        console.error('Empty request body');
+        return NextResponse.json(
+          { error: 'Empty request body' },
+          { status: 400 }
+        );
+      }
+      
+      body = JSON.parse(bodyText);
+      console.log('Parsed request body:', body);
     } catch (parseError) {
       console.error('Error parsing request body:', parseError);
+      console.error('Raw body text:', bodyText);
       return NextResponse.json(
-        { error: 'Invalid request body' },
+        { error: 'Invalid request body', details: parseError instanceof Error ? parseError.message : 'Unknown error' },
         { status: 400 }
       );
     }
     
     const { name, email, mobile, city, otp } = body;
+    console.log('Extracted fields:', { name, email, mobile, city, otp: otp ? 'provided' : 'not provided' });
 
     // If OTP is not provided, generate and send it
     if (!otp) {
@@ -179,16 +208,17 @@ export async function POST(request: Request) {
         }
         console.log('OTP email sent successfully to:', email);
 
-        return NextResponse.json({ message: 'OTP sent successfully' });
+        const response = { message: 'OTP sent successfully' };
+        console.log('Sending response:', response);
+        return NextResponse.json(response);
       } catch (error) {
         console.error('Error in registration process:', error);
-        return NextResponse.json(
-          { 
-            error: 'Failed to process registration', 
-            details: error instanceof Error ? error.message : 'Unknown error'
-          },
-          { status: 500 }
-        );
+        const errorResponse = { 
+          error: 'Failed to process registration', 
+          details: error instanceof Error ? error.message : 'Unknown error'
+        };
+        console.log('Sending error response:', errorResponse);
+        return NextResponse.json(errorResponse, { status: 500 });
       }
     }
 
